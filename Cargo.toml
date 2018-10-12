@@ -1,0 +1,11 @@
+[package]
+name = "timezone-dispatch"
+version = "0.1.0"
+authors = ["jude-LafiteIII <judewrs@gmail.com>"]
+
+[dependencies]
+mysql = "*"
+dotenv = "*"
+chrono = "0.4"
+chrono-tz = "0.4"
+reqwest = "*"
