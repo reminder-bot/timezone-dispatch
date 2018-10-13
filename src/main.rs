@@ -35,25 +35,17 @@ fn main() {
                 let mut m = HashMap::new();
                 m.insert("content", dt.format(&channel_name).to_string());
 
-                let client_c = client.clone();
-                let t = token.clone();
-                thread::spawn(move || {
-                    send(format!("{}/channels/{}/messages/{}", URL, channel_id, m_id), &m, &t, &client_c)
-                });
+                send(format!("{}/channels/{}/messages/{}", URL, channel_id, m_id), &m, &token, &client)
             }
             else {
                 let mut m = HashMap::new();
                 m.insert("name", dt.format(&channel_name).to_string());
 
-                let client_c = client.clone();
-                let t = token.clone();
-                thread::spawn(move || {
-                    send(format!("{}/channels/{}", URL, channel_id), &m, &t, &client_c);
-                });
+                send(format!("{}/channels/{}", URL, channel_id), &m, &token, &client);
             }
         }
 
-        thread::sleep(Duration::from_secs(1));
+        thread::sleep(Duration::from_secs(10));
     }
 }
 
