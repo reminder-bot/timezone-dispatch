@@ -24,6 +24,7 @@ fn main() {
 
     loop {
         let q = c.query("SELECT * FROM clocks").unwrap();
+        let mut requests: Vec<reqwest::RequestBuilder> = vec![];
 
         for res in q {
             let (_id, channel_id, timezone, channel_name, _guild_id, message_id) = mysql::from_row::<(u32, u64, String, String, u64, Option<u64>)>(res.unwrap());
@@ -35,29 +36,27 @@ fn main() {
                 let mut m = HashMap::new();
                 m.insert("content", dt.format(&channel_name).to_string());
 
-                send(format!("{}/channels/{}/messages/{}", URL, channel_id, m_id), &m, &token, &client)
+                requests.push(send(format!("{}/channels/{}/messages/{}", URL, channel_id, m_id), &m, &token, &client));
             }
             else {
                 let mut m = HashMap::new();
                 m.insert("name", dt.format(&channel_name).to_string());
 
-                send(format!("{}/channels/{}", URL, channel_id), &m, &token, &client);
+                requests.push(send(format!("{}/channels/{}", URL, channel_id), &m, &token, &client));
             }
+        }
+
+        for req in requests {
+            req.send();
         }
 
         thread::sleep(Duration::from_secs(10));
     }
 }
 
-fn send(url: String, m: &HashMap<&str, String>, token: &str, client: &reqwest::Client) {
-    match client.patch(&url)
+fn send(url: String, m: &HashMap<&str, String>, token: &str, client: &reqwest::Client) -> reqwest::RequestBuilder {
+    client.patch(&url)
         .json(m)
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bot {}", token))
-        .send() {
-
-        Err(_) => println!("Error value occured"),
-
-        _ => {}
-    }
 }
