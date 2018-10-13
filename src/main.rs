@@ -35,34 +35,37 @@ fn main() {
                 let mut m = HashMap::new();
                 m.insert("content", dt.format(&channel_name).to_string());
 
-                match client.patch(&format!("{}/channels/{}/messages/{}", URL, channel_id, m_id))
-                    .json(&m)
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", format!("Bot {}", token))
-                    .send() {
-
-                    Err(_) => println!("Error value occured"),
-
-                    _ => {}
-                }
+                let client_c = client.clone();
+                let t = token.clone();
+                thread::spawn(move || {
+                    send(format!("{}/channels/{}/messages/{}", URL, channel_id, m_id), &m, &t, &client_c)
+                });
             }
             else {
                 let mut m = HashMap::new();
                 m.insert("name", dt.format(&channel_name).to_string());
 
-                match client.patch(&format!("{}/channels/{}", URL, channel_id))
-                    .json(&m)
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", format!("Bot {}", token))
-                    .send() {
-
-                    Err(_) => println!("Error value occured"),
-
-                    _ => {}
-                }
+                let client_c = client.clone();
+                let t = token.clone();
+                thread::spawn(move || {
+                    send(format!("{}/channels/{}", URL, channel_id), &m, &t, &client_c);
+                });
             }
         }
 
         thread::sleep(Duration::from_secs(1));
+    }
+}
+
+fn send(url: String, m: &HashMap<&str, String>, token: &str, client: &reqwest::Client) {
+    match client.patch(&url)
+        .json(m)
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Bot {}", token))
+        .send() {
+
+        Err(_) => println!("Error value occured"),
+
+        _ => {}
     }
 }
