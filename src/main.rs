@@ -3,6 +3,7 @@ extern crate dotenv;
 extern crate chrono;
 extern crate chrono_tz;
 extern crate reqwest;
+extern crate threadpool;
 
 use chrono_tz::Tz;
 use chrono::prelude::*;
@@ -21,6 +22,7 @@ fn main() {
 
     let mut c = mysql::Conn::new(sql_url).unwrap();
     let client = reqwest::Client::new();
+    let pool = threadpool::ThreadPool::new(8);
 
     loop {
         let q = c.query("SELECT * FROM clocks").unwrap();
@@ -47,7 +49,13 @@ fn main() {
         }
 
         for req in requests {
-            req.send();
+            pool.execute(move || {
+                match req.send() {
+                    Err(r) => println!("{:?}", r.status()),
+
+                    Ok(r) => println!("{:?}", r.status())
+                }
+            });
         }
 
         thread::sleep(Duration::from_secs(10));
