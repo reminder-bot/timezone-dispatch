@@ -25,7 +25,7 @@ fn main() {
     let pool = threadpool::ThreadPool::new(8);
 
     loop {
-        let q = c.query("SELECT * FROM clocks").unwrap();
+        let q = c.query("SELECT * FROM clocks ORDER BY RAND()").unwrap();
         let mut requests: Vec<reqwest::RequestBuilder> = vec![];
 
         for res in q {
