@@ -20,12 +20,12 @@ fn main() {
 
     const URL: &str = "https://discordapp.com/api/v6";
 
-    let mut c = mysql::Conn::new(sql_url).unwrap();
-    let client = reqwest::Client::new();
+    let mut connection = mysql::Conn::new(sql_url).unwrap();
+    let req_client = reqwest::Client::new();
     let pool = threadpool::ThreadPool::new(8);
 
     loop {
-        let q = c.query("SELECT * FROM clocks ORDER BY RAND()").unwrap();
+        let q = connection.query("SELECT * FROM clocks ORDER BY RAND()").unwrap();
         let mut requests: Vec<reqwest::RequestBuilder> = vec![];
 
         for res in q {
@@ -38,13 +38,13 @@ fn main() {
                 let mut m = HashMap::new();
                 m.insert("content", dt.format(&channel_name).to_string());
 
-                requests.push(send(format!("{}/channels/{}/messages/{}", URL, channel_id, m_id), &m, &token, &client));
+                requests.push(send(format!("{}/channels/{}/messages/{}", URL, channel_id, m_id), &m, &token, &req_client));
             }
             else {
                 let mut m = HashMap::new();
                 m.insert("name", dt.format(&channel_name).to_string());
 
-                requests.push(send(format!("{}/channels/{}", URL, channel_id), &m, &token, &client));
+                requests.push(send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client));
             }
         }
 
