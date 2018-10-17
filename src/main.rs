@@ -17,8 +17,8 @@ use std::time::Duration;
 fn main() {
     dotenv::dotenv().ok();
 
-    let token = env::var("TOKEN").unwrap();
-    let sql_url = env::var("SQL").unwrap();
+    let token = env::var("DISCORD_TOKEN").unwrap();
+    let sql_url = env::var("SQL_URL").unwrap();
 
     const URL: &str = "https://discordapp.com/api/v6";
 
