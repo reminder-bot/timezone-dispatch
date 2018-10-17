@@ -50,7 +50,6 @@ fn main() {
                 req = send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client);
             }
 
-            let conn = mysql_conn.clone();
             pool.execute(move || {
                 match req.send() {
                     Err(_) => {},
@@ -59,7 +58,6 @@ fn main() {
                         if r.status() == 404 {
                             println!("Delete required");
                             println!("ID: {}", id);
-                            conn.prep_exec("DELETE FROM clocks WHERE id = :id", params!{"id" => id});
                         }
                     }
                 }
