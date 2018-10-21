@@ -1,4 +1,4 @@
-#[macro_use] extern crate mysql;
+extern crate mysql;
 
 extern crate dotenv;
 extern crate chrono;
@@ -19,7 +19,7 @@ fn main() {
 
     let token = env::var("DISCORD_TOKEN").unwrap();
     let sql_url = env::var("SQL_URL").unwrap();
-    let interval = env::var("INTERVAL").unwrap();
+    let interval = env::var("INTERVAL").unwrap().parse::<u64>().unwrap();
 
     const URL: &str = "https://discordapp.com/api/v6";
 
