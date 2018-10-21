@@ -19,6 +19,7 @@ fn main() {
 
     let token = env::var("DISCORD_TOKEN").unwrap();
     let sql_url = env::var("SQL_URL").unwrap();
+    let interval = env::var("INTERVAL").unwrap();
 
     const URL: &str = "https://discordapp.com/api/v6";
 
@@ -64,7 +65,7 @@ fn main() {
             });
         }
 
-        thread::sleep(Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(interval));
     }
 }
 
