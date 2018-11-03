@@ -20,12 +20,13 @@ fn main() {
     let token = env::var("DISCORD_TOKEN").unwrap();
     let sql_url = env::var("SQL_URL").unwrap();
     let interval = env::var("INTERVAL").unwrap().parse::<u64>().unwrap();
+    let threads = env::var("THREADS").unwrap().parse::<u64>().unwrap();
 
     const URL: &str = "https://discordapp.com/api/v6";
 
     let mysql_conn = mysql::Pool::new(sql_url).unwrap();
     let req_client = reqwest::Client::new();
-    let pool = threadpool::ThreadPool::new(8);
+    let pool = threadpool::ThreadPool::new(threads);
 
     loop {
         let q = mysql_conn.prep_exec("SELECT * FROM clocks ORDER BY RAND()", ()).unwrap();
