@@ -1,4 +1,4 @@
-extern crate mysql;
+#[macro_use] extern crate mysql;
 
 extern crate dotenv;
 extern crate chrono;
@@ -20,7 +20,7 @@ fn main() {
     let token = env::var("DISCORD_TOKEN").unwrap();
     let sql_url = env::var("SQL_URL").unwrap();
     let interval = env::var("INTERVAL").unwrap().parse::<u64>().unwrap();
-    let threads = env::var("THREADS").unwrap().parse::<u64>().unwrap();
+    let threads = env::var("THREADS").unwrap().parse::<usize>().unwrap();
 
     const URL: &str = "https://discordapp.com/api/v6";
 
@@ -52,6 +52,7 @@ fn main() {
                 req = send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client);
             }
 
+            let c = mysql_conn.clone();
             pool.execute(move || {
                 match req.send() {
                     Err(_) => {},
@@ -59,7 +60,7 @@ fn main() {
                     Ok(r) => {
                         if r.status() == 404 {
                             println!("Delete required");
-                            println!("ID: {}", id);
+                            let _ = c.prep_exec("DELETE FROM clocks WHERE id = :id", params!{"id" => id});
                         }
                     }
                 }
