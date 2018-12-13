@@ -29,6 +29,8 @@ fn main() {
     let pool = threadpool::ThreadPool::new(threads);
 
     loop {
+        pool.join();
+
         let q = mysql_conn.prep_exec("SELECT * FROM clocks ORDER BY RAND()", ()).unwrap();
 
         for res in q {
