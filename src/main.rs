@@ -34,7 +34,7 @@ fn main() {
         let q = mysql_conn.prep_exec("SELECT * FROM clocks ORDER BY RAND()", ()).unwrap();
 
         for res in q {
-            let (id, channel_id, timezone, channel_name, _guild_id, message_id) = mysql::from_row::<(u32, u64, String, String, u64, Option<u64>)>(res.unwrap());
+            let (id, channel_id, timezone, channel_name, message_id) = mysql::from_row::<(u32, u64, String, String, Option<u64>)>(res.unwrap());
 
             let t: Tz = timezone.parse().unwrap();
             let dt = Utc::now().with_timezone(&t);
