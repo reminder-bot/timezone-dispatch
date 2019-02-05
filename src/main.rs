@@ -31,7 +31,7 @@ fn main() {
     loop {
         pool.join();
 
-        let q = mysql_conn.prep_exec("SELECT * FROM clocks ORDER BY RAND()", ()).unwrap();
+        let q = mysql_conn.prep_exec("SELECT * FROM clocks", ()).unwrap();
 
         for res in q {
             let (id, channel_id, timezone, channel_name, message_id) = mysql::from_row::<(u32, u64, String, String, Option<u64>)>(res.unwrap());
@@ -39,20 +39,10 @@ fn main() {
             let t: Tz = timezone.parse().unwrap();
             let dt = Utc::now().with_timezone(&t);
 
-            let mut req;
+            let mut m = HashMap::new();
+            m.insert("name", dt.format(&channel_name).to_string());
 
-            if let Some(m_id) = message_id {
-                let mut m = HashMap::new();
-                m.insert("content", dt.format(&channel_name).to_string());
-
-                req = send(format!("{}/channels/{}/messages/{}", URL, channel_id, m_id), &m, &token, &req_client);
-            }
-            else {
-                let mut m = HashMap::new();
-                m.insert("name", dt.format(&channel_name).to_string());
-
-                req = send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client);
-            }
+            let req = send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client);
 
             let c = mysql_conn.clone();
             pool.execute(move || {
@@ -61,7 +51,6 @@ fn main() {
 
                     Ok(r) => {
                         if r.status() == 404 {
-                            println!("Delete required");
                             let _ = c.prep_exec("DELETE FROM clocks WHERE id = :id", params!{"id" => id});
                         }
                     }
