@@ -39,10 +39,20 @@ fn main() {
             let t: Tz = timezone.parse().unwrap();
             let dt = Utc::now().with_timezone(&t);
 
-            let mut m = HashMap::new();
-            m.insert("name", dt.format(&channel_name).to_string());
+            let mut req;
 
-            let req = send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client);
+            if let Some(m_id) = message_id {
+                let mut m = HashMap::new();
+                m.insert("content", dt.format(&channel_name).to_string());
+
+                req = send(format!("{}/channels/{}/messages/{}", URL, channel_id, m_id), &m, &token, &req_client);
+            }
+            else {
+                let mut m = HashMap::new();
+                m.insert("name", dt.format(&channel_name).to_string());
+
+                req = send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client);
+            }
 
             let c = mysql_conn.clone();
             pool.execute(move || {
