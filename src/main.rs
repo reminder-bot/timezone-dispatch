@@ -12,6 +12,25 @@ use std::collections::HashMap;
 use std::env;
 use std::thread;
 use std::time::Duration;
+use std::sync::Arc;
+use std::sync::Mutex;
+
+
+struct ResponseBox {
+    id: u32,
+    response: u16,
+}
+
+impl ResponseBox {
+
+    fn new(id: u32) -> ResponseBox {
+        ResponseBox { id: id, response: 200 };
+    }
+
+    fn set_response(&mut self, new: u16) {
+        self.response = new;
+    }
+}
 
 
 fn main() {
@@ -33,40 +52,39 @@ fn main() {
 
         let q = mysql_conn.prep_exec("SELECT * FROM clocks", ()).unwrap();
 
+        let mut end = vec![];
+
         for res in q {
-            let (id, channel_id, timezone, channel_name, message_id) = mysql::from_row::<(u32, u64, String, String, Option<u64>)>(res.unwrap());
+            let (id, channel_id, timezone, channel_name) = mysql::from_row::<(u32, u64, String, String)>(res.unwrap());
 
             let t: Tz = timezone.parse().unwrap();
             let dt = Utc::now().with_timezone(&t);
 
-            let mut req;
+            let mut m = HashMap::new();
+            m.insert("name", dt.format(&channel_name).to_string());
 
-            if let Some(m_id) = message_id {
-                let mut m = HashMap::new();
-                m.insert("content", dt.format(&channel_name).to_string());
+            let req = send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client);
 
-                req = send(format!("{}/channels/{}/messages/{}", URL, channel_id, m_id), &m, &token, &req_client);
-            }
-            else {
-                let mut m = HashMap::new();
-                m.insert("name", dt.format(&channel_name).to_string());
+            let mut new = Arc::new(Mutex::new(ResponseBox::new(id)));
 
-                req = send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client);
-            }
+            let mut cloned = new.clone();
 
-            let c = mysql_conn.clone();
             pool.execute(move || {
                 match req.send() {
                     Err(_) => {},
 
                     Ok(r) => {
-                        if r.status() == 404 {
-                            let _ = c.prep_exec("DELETE FROM clocks WHERE id = :id", params!{"id" => id});
-                        }
+                        let mut l = cloned.lock().unwrap();
+                        l.set_response(r.status().as_u16());
                     }
                 }
             });
+
+            end.push(new);
         }
+
+        let selector = end.iter().filter(|r| r.response == 404).join(", ");
+        
 
         thread::sleep(Duration::from_secs(interval));
     }
