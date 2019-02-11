@@ -1,5 +1,4 @@
-#[macro_use] extern crate mysql;
-
+extern crate mysql;
 extern crate dotenv;
 extern crate chrono;
 extern crate chrono_tz;
@@ -24,7 +23,7 @@ struct ResponseBox {
 impl ResponseBox {
 
     fn new(id: u32) -> ResponseBox {
-        ResponseBox { id: id, response: 200 };
+        ResponseBox { id: id, response: 200 }
     }
 
     fn set_response(&mut self, new: u16) {
@@ -48,11 +47,9 @@ fn main() {
     let pool = threadpool::ThreadPool::new(threads);
 
     loop {
-        pool.join();
+        let q = mysql_conn.prep_exec("SELECT id, channel, timezone, name FROM clocks", ()).unwrap();
 
-        let q = mysql_conn.prep_exec("SELECT * FROM clocks", ()).unwrap();
-
-        let mut end = vec![];
+        let end: Arc<Mutex<Vec<ResponseBox>>> = Arc::new(Mutex::new(vec![]));
 
         for res in q {
             let (id, channel_id, timezone, channel_name) = mysql::from_row::<(u32, u64, String, String)>(res.unwrap());
@@ -65,26 +62,35 @@ fn main() {
 
             let req = send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client);
 
-            let mut new = Arc::new(Mutex::new(ResponseBox::new(id)));
-
-            let mut cloned = new.clone();
-
+            let mut e = end.clone();
             pool.execute(move || {
                 match req.send() {
                     Err(_) => {},
 
                     Ok(r) => {
-                        let mut l = cloned.lock().unwrap();
-                        l.set_response(r.status().as_u16());
+                        let mut new = ResponseBox::new(id);
+                        new.set_response(r.status().as_u16());
+
+                        let mut l = e.lock().unwrap();
+                        (*l).push(new);
                     }
                 }
             });
-
-            end.push(new);
         }
 
-        let selector = end.iter().filter(|r| r.response == 404).join(", ");
-        
+        pool.join();
+
+        let out = end.lock().unwrap();
+        let selector = out
+            .iter().filter(|r| {
+                r.response == 404 as u16
+            }).map(|m| format!("{}", m.id) );
+
+        let collected: Vec<String> = selector.collect();
+
+        if !collected.is_empty() {
+            mysql_conn.prep_exec(&format!("DELETE FROM clocks WHERE id IN ({})", collected.join(",")), ()).unwrap();
+        }
 
         thread::sleep(Duration::from_secs(interval));
     }
