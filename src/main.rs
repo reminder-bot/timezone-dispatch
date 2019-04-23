@@ -78,6 +78,24 @@ fn main() {
             });
         }
 
+        let mut unique = mysql_conn.prep_exec("SELECT COUNT(DISTINCT(guild)) FROM clocks", ()).unwrap();
+
+        match unique.next() {
+            Some(row) => {
+                let mut d = HashMap::new();
+
+                d.insert("server_count", mysql::from_row::<(u32)>(row.unwrap()));
+
+                let _  = req_client.post(&format!("https://discordbots.org/api/bots/{}/stats", env::var("ID").unwrap()))
+                    .json(&d)
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", env::var("DBL_TOKEN").unwrap())
+                    .send();
+            }
+
+            None => {}
+        }
+
         pool.join();
 
         let out = end.lock().unwrap();
