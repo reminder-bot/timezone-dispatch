@@ -1,4 +1,5 @@
-extern crate mysql;
+#[macro_use] extern crate mysql;
+
 extern crate dotenv;
 extern crate chrono;
 extern crate chrono_tz;
@@ -47,53 +48,42 @@ fn main() {
     let pool = threadpool::ThreadPool::new(threads);
 
     loop {
-        let q = mysql_conn.prep_exec("SELECT id, channel, timezone, name FROM clocks", ()).unwrap();
+        let q = mysql_conn.prep_exec("SELECT id, channel, timezone, name, current_name FROM clocks", ()).unwrap();
 
         let end: Arc<Mutex<Vec<ResponseBox>>> = Arc::new(Mutex::new(vec![]));
 
         for res in q {
-            let (id, channel_id, timezone, channel_name) = mysql::from_row::<(u32, u64, String, String)>(res.unwrap());
+            let (id, channel_id, timezone, channel_name, current_name) = mysql::from_row::<(u32, u64, String, String, String)>(res.unwrap());
 
             let t: Tz = timezone.parse().unwrap();
             let dt = Utc::now().with_timezone(&t);
+            let new_name = dt.format(&channel_name).to_string();
 
-            let mut m = HashMap::new();
-            m.insert("name", dt.format(&channel_name).to_string());
+            if new_name != current_name {
+                println!("updating");
+                mysql_conn.prep_exec("UPDATE clocks SET current_name = :n WHERE id = :id", params!{"n" => &new_name, "id" => &id}).unwrap();
 
-            let req = send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client);
+                let mut m = HashMap::new();
+                m.insert("name", new_name);
 
-            let mut e = end.clone();
-            pool.execute(move || {
-                match req.send() {
-                    Err(_) => {},
+                let req = send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client);
 
-                    Ok(r) => {
-                        let mut new = ResponseBox::new(id);
-                        new.set_response(r.status().as_u16());
+                let e = end.clone();
 
-                        let mut l = e.lock().unwrap();
-                        (*l).push(new);
+                pool.execute(move || {
+                    match req.send() {
+                        Err(_) => {},
+
+                        Ok(r) => {
+                            let mut new = ResponseBox::new(id);
+                            new.set_response(r.status().as_u16());
+
+                            let mut l = e.lock().unwrap();
+                            (*l).push(new);
+                        }
                     }
-                }
-            });
-        }
-
-        let mut unique = mysql_conn.prep_exec("SELECT COUNT(DISTINCT(guild)) FROM clocks", ()).unwrap();
-
-        match unique.next() {
-            Some(row) => {
-                let mut d = HashMap::new();
-
-                d.insert("server_count", mysql::from_row::<(u32)>(row.unwrap()));
-
-                let _  = req_client.post(&format!("https://discordbots.org/api/bots/{}/stats", env::var("ID").unwrap()))
-                    .json(&d)
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", env::var("DBL_TOKEN").unwrap())
-                    .send();
+                });
             }
-
-            None => {}
         }
 
         pool.join();
@@ -101,7 +91,7 @@ fn main() {
         let out = end.lock().unwrap();
         let selector = out
             .iter().filter(|r| {
-                r.response == 404 as u16
+                ![400, 403, 404].contains(&r.response)
             }).map(|m| format!("{}", m.id) );
 
         let collected: Vec<String> = selector.collect();
