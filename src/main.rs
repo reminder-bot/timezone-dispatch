@@ -89,9 +89,10 @@ fn main() {
         pool.join();
 
         let out = end.lock().unwrap();
+        // selects for __deletion__
         let selector = out
             .iter().filter(|r| {
-                ![400, 403, 404].contains(&r.response)
+                [400, 403, 404].contains(&r.response)
             }).map(|m| format!("{}", m.id) );
 
         let collected: Vec<String> = selector.collect();
