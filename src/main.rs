@@ -60,15 +60,13 @@ fn main() {
             let new_name = dt.format(&channel_name).to_string();
 
             if new_name != current_name {
-                println!("updating");
-                mysql_conn.prep_exec("UPDATE clocks SET current_name = :n WHERE id = :id", params!{"n" => &new_name, "id" => &id}).unwrap();
-
                 let mut m = HashMap::new();
-                m.insert("name", new_name);
+                m.insert("name", new_name.clone());
 
                 let req = send(format!("{}/channels/{}", URL, channel_id), &m, &token, &req_client);
 
                 let e = end.clone();
+                let m = mysql_conn.clone();
 
                 pool.execute(move || {
                     match req.send() {
@@ -77,6 +75,10 @@ fn main() {
                         Ok(r) => {
                             let mut new = ResponseBox::new(id);
                             new.set_response(r.status().as_u16());
+
+                            if r.status().is_success() {
+                                m.prep_exec("UPDATE clocks SET current_name = :n WHERE id = :id", params!{"n" => new_name, "id" => &id}).unwrap();
+                            }
 
                             let mut l = e.lock().unwrap();
                             (*l).push(new);
