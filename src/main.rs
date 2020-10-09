@@ -24,7 +24,7 @@ struct ResponseBox {
 impl ResponseBox {
 
     fn new(id: u32) -> ResponseBox {
-        ResponseBox { id: id, response: 200 }
+        ResponseBox { id, response: 200 }
     }
 
     fn set_response(&mut self, new: u16) {
@@ -32,6 +32,7 @@ impl ResponseBox {
     }
 }
 
+const URL: &str = "https://discord.com/api/v6";
 
 fn main() {
     dotenv::dotenv().ok();
@@ -40,8 +41,6 @@ fn main() {
     let sql_url = env::var("SQL_URL").unwrap();
     let interval = env::var("INTERVAL").unwrap().parse::<u64>().unwrap();
     let threads = env::var("THREADS").unwrap().parse::<usize>().unwrap();
-
-    const URL: &str = "https://discordapp.com/api/v6";
 
     let mysql_conn = mysql::Pool::new(sql_url).unwrap();
     let req_client = reqwest::Client::new();
